@@ -8,6 +8,7 @@ __license__ = "MIT"
 import os
 import numpy as np
 import unittest
+import pytest
 import deepchem as dc
 
 
@@ -60,3 +61,56 @@ class TestMultitask(unittest.TestCase):
         np.testing.assert_allclose(X, dataset.X)
         np.testing.assert_allclose(y, dataset.y)
         np.testing.assert_allclose(w, dataset.w)
+
+    @pytest.mark.torch
+    def test_multitask_regressor_integer_features(self):
+        """Test MultitaskRegressor with integer features (fixes #3557)."""
+        np.random.seed(123)
+        X = np.random.randint(0, 2, size=(10, 50))
+        y = np.random.rand(10, 2)
+        dataset = dc.data.NumpyDataset(X, y)
+
+        model = dc.models.MultitaskRegressor(
+            n_tasks=2, n_features=50, layer_sizes=[32], dropouts=0.0)
+        model.fit(dataset, nb_epoch=2)
+        preds = model.predict(dataset)
+        self.assertEqual(preds.shape, (10, 2, 1))
+
+    @pytest.mark.torch
+    def test_multitask_classifier_integer_features(self):
+        """Test MultitaskClassifier with integer features (fixes #3557)."""
+        np.random.seed(123)
+        X = np.random.randint(0, 2, size=(10, 50))
+        y = np.random.randint(0, 2, size=(10, 2))
+        dataset = dc.data.NumpyDataset(X, y)
+
+        model = dc.models.MultitaskClassifier(
+            n_tasks=2,
+            n_features=50,
+            n_classes=2,
+            layer_sizes=[32],
+            dropouts=0.0)
+        model.fit(dataset, nb_epoch=2)
+        preds = model.predict(dataset)
+        self.assertEqual(preds.shape, (10, 2, 2))
+
+    @pytest.mark.torch
+    def test_multitask_regressor_maccs_fingerprint(self):
+        """Test MultitaskRegressor with MACCSKeysFingerprint directly."""
+        smiles = [
+            "CCN(CCSC)C(=O)N[C@@](C)(CC)C(F)(F)F",
+            "CC1(C)CN(C(=O)Nc2cc3ccccc3nn2)C[C@@]2(CCOC2)O1"
+        ]
+        featurizer = dc.feat.MACCSKeysFingerprint()
+        features = featurizer.featurize(smiles)
+        y = np.array([[3.112], [2.432]])
+        dataset = dc.data.NumpyDataset(features, y)
+
+        model = dc.models.MultitaskRegressor(
+            n_tasks=1,
+            n_features=features.shape[1],
+            layer_sizes=[32],
+            dropouts=0.0)
+        model.fit(dataset, nb_epoch=2)
+        preds = model.predict(dataset)
+        self.assertEqual(preds.shape, (2, 1, 1))

@@ -125,6 +125,7 @@ class MultitaskClassifier(TorchModel):
                 torch.nn.init.constant_(self.output_layer.bias, 0)
 
             def forward(self, x):
+                x = x.float()
                 prev_size = n_features
                 next_activation = None
                 for size, layer, dropout, activation_fn, in zip(
@@ -299,6 +300,7 @@ class MultitaskRegressor(TorchModel):
 
             def forward(self, inputs):
                 x, dropout_switch = inputs
+                x = x.float()
                 prev_size = n_features
                 next_activation = None
                 for size, layer, dropout, activation_fn, in zip(
